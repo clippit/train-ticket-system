@@ -1,0 +1,5 @@
+*.o
+a.out
+data.sqlite3
+ticket
+ticketd
