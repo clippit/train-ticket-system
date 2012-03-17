@@ -4,7 +4,7 @@
 #include "common.h"
 
 int main() {
-	client_starting();
-	client_ending();
+	mqueue_client_start();
+	mqueue_client_end();
 	exit(EXIT_SUCCESS);
 }

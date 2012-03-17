@@ -1,5 +1,5 @@
 *.o
 a.out
-data.sqlite3
+data.sqlite
 ticket
 ticketd

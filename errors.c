@@ -5,6 +5,9 @@
 char * get_error_msg(int errornum) {
 	char *error_msg;
 	switch (errornum) {
+	case ERROR_MESSAGE_QUEUE_KEY:
+		error_msg = "Get message queue key failed. Is there a data.sqlite file?";
+		break;
 	case ERROR_SERVER_MQUEUE_CREATE:
 		error_msg = "Create server message queue failed.";
 		break;

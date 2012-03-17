@@ -49,11 +49,10 @@ typedef struct _order_message {
 	order* order_info;
 } order_message;
 
-#define SERVER_MQUEUE 12306
-#define CLIENT_MQUEUE 12307
+#define FTOK_PATHNAME "data.sqlite"
 
-int server_starting();
-void server_ending();
-int client_starting();
-void client_ending();
+int mqueue_server_start();
+void mqueue_server_end();
+int mqueue_client_start();
+void mqueue_client_end();
 #endif

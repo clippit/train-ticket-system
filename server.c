@@ -5,7 +5,7 @@
 #include "errors.h"
 
 int main() {
-	server_starting();
-	server_ending();
+	mqueue_server_start();
+	mqueue_server_end();
 	exit(EXIT_SUCCESS);
 }
