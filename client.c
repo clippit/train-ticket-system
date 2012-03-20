@@ -59,12 +59,27 @@ void input_password(char *input) {
   }
 }
 
+void prompt_password() {
+  int success_flag = 0;
+  char *password = NULL;
+  while (!success_flag) {
+    password = getpass("Password: ");
+    if (strlen(password) < 1 || strlen(password) > PASSWORD_MAX_LENGTH) {
+      warnx("Password cannot be less than 1 character or longer than %d characters.", PASSWORD_MAX_LENGTH);
+    } else {
+      input_password(password);
+      success_flag = 1;
+    }
+  }
+  free(password);
+}
+
 int main(int argc, char **argv) {
 
   static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h' },
     {"register", no_argument, NULL, 'r'},
-    {"username", required_argument, NULL, 'u'},
+    {"username", optional_argument, NULL, 'u'},
     {"password", optional_argument, NULL, 'p'},
     {NULL, no_argument, NULL, 0}
   };
@@ -77,20 +92,29 @@ int main(int argc, char **argv) {
       display_usage();
       break;
     case 'u':
-      input_username(optarg);
+      if (optarg) input_username(optarg);
       break;
     case 'p':
-      input_password(optarg);
+      if (optarg) input_password(optarg);
+      break;
       break;
     default: // invalid argument
       break;
     }
   }
 
-  if ( strlen(current_user.username) <= 0) {
+  while ( strlen(current_user.username) <= 0) {
     prompt_username();
   }
-  // printf("username:%s  length:%d\npassword:%s\n", current_user.username, strlen(current_user.username), current_user.password );
+  while ( strlen(current_user.password) <= 0 ) {
+    prompt_password();
+  }
+  #if DEBUG
+  printf("username:%s  length:%zu\npassword:%s  length:%zu\n",
+    current_user.username, strlen(current_user.username),
+    current_user.password, strlen(current_user.password));
+  #endif
+
   // prompt_username();
   // mqueue_client_start();
   // user u = {1, "test", "pass", 0};
