@@ -94,7 +94,18 @@ void prompt_password() {
       success_flag = 1;
     }
   }
-  free(password);
+}
+
+void repeat_password() {
+  char *password2 = NULL;
+  const char prompt[] = "Repeat Password: ";
+  password2 = getpass(prompt);
+  while (strcmp(password2, current_user.password) != 0) {
+    warnx("Two passwords are not the same. Please try again.");
+    prompt_password();
+    printf("%s\n", current_user.password);
+    password2 = getpass(prompt);
+  }
 }
 
 int main(int argc, char **argv) {
@@ -183,6 +194,10 @@ int main(int argc, char **argv) {
   printf("---options: name:%s,  from:%s,  to:%s,  order_id:%ld\n",
     options.name, options.from, options.to, options.order_id);
   #endif
+
+  if (action & ACTION_REGISTER) 
+    repeat_password();
+
 
   // prompt_username();
   // mqueue_client_start();
