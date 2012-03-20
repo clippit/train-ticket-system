@@ -13,7 +13,11 @@ void display_usage() {
   puts( "Train Ticket System Simulation -- Client" );
   puts( "" );
   puts( "Usage:" );
-  puts( "  ticket [-u USERNAME] [-p PASSWORD] [-r|-s|-o|-v|-f] [OPTIONS ...]" );
+  puts( "  ticket [MODE] [-u USERNAME] [-p PASSWORD] [-r|-s|-o|-v|-f] [OPTIONS ...]" );
+  puts( "Two Modes:" );
+  puts( "-m, --offline           Client and Server are running locally, default mode.");
+  puts( "-M, --online            Client and Server are running separately in network.");
+  puts( "                        Not implemented yet.");
   puts( "" );
   puts( "Login Action:" );
   puts( "  -u, --username USERNAME" );
@@ -109,6 +113,7 @@ void repeat_password() {
 }
 
 int main(int argc, char **argv) {
+  short int mode = MODE_OFFLINE;
   int action = ACTION_NOACTION;
   struct options_t {
     char name [TRAIN_NUMBER_MAX_LENGTH + 1];
@@ -119,6 +124,8 @@ int main(int argc, char **argv) {
 
   static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h' },
+    {"offline", no_argument, NULL, 'm' },
+    {"online", no_argument, NULL, 'M' },
     {"username", optional_argument, NULL, 'u'},
     {"password", optional_argument, NULL, 'p'},
     {"register", no_argument, NULL, 'r'},
@@ -139,6 +146,12 @@ int main(int argc, char **argv) {
     switch(opt) {
     case 'h':
       display_usage();
+      break;
+    case 'm':
+      mode = MODE_OFFLINE;
+      break;
+    case 'M':
+      mode = MODE_ONLINE;
       break;
     case 'u':
       if (optarg) read_cli_string_option("Username", optarg, current_user.username, USERNAME_MAX_LENGTH);

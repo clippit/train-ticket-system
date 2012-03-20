@@ -3,6 +3,10 @@
 
 #include <time.h>
 
+/* Running mode
+   ----------------------------- */
+#define MODE_OFFLINE 1
+#define MODE_ONLINE  2
 
 /* Model
    ----------------------------- */
