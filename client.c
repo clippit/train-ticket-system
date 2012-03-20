@@ -36,6 +36,7 @@ void display_usage() {
   puts( "Order Action:" );
   puts( "  -o, --order           You need provide order criteria via the option below.");
   puts( "  -N, --number NUMBER   Train No." );
+  puts( "  -A, --amount AMOUNT   How many tickets you want to order. Default is 1." );
   //puts( "" );
   puts( "View Action:" );
   puts( "  -v, --view            List your orders.");
@@ -119,8 +120,9 @@ int main(int argc, char **argv) {
     char name [TRAIN_NUMBER_MAX_LENGTH + 1];
     char from[TRAIN_STATION_MAX_LENGTH + 1];
     char to  [TRAIN_STATION_MAX_LENGTH + 1];
-    long int order_id;
-  } options = {"\0", "\0", "\0", -1};
+    unsigned long int order_id;
+    unsigned short int amount;
+  } options = {"\0", "\0", "\0", -1, 1};
 
   static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h' },
@@ -136,11 +138,13 @@ int main(int argc, char **argv) {
     {"number", required_argument, NULL, 'N'},
     {"from", required_argument, NULL, 'F'},
     {"to", required_argument, NULL, 'T'},
+    {"amount", required_argument, NULL, 'A'},
     {"order", required_argument, NULL, 'O'},
     {NULL, no_argument, NULL, 0}
   };
-  static const char *shortopts = "hu:p:rsovfN:F:T:O:";
+  static const char *shortopts = "hmMu:p:rsovfN:F:T:A:O:";
   int opt = 0;
+  long int amount = 1;
 
   while ( (opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1) {
     switch(opt) {
@@ -183,8 +187,15 @@ int main(int argc, char **argv) {
     case 'T':
       read_cli_string_option("Terminal station", optarg, options.to, TRAIN_STATION_MAX_LENGTH);
       break;
+    case 'A':
+      amount = strtoul(optarg, (char **)NULL, 10);
+      if (amount < 1) errx(EXIT_FAILURE, "Invalid negative number.");
+      if (amount > MAX_AMOUNT_PER_ORDER)
+        errx(EXIT_FAILURE, "Your can only order less than %d tickets one time.", MAX_AMOUNT_PER_ORDER);
+      options.amount = amount;
+      break;
     case 'O':
-      options.order_id = strtol(optarg, (char **)NULL, 10);
+      options.order_id = strtoul(optarg, (char **)NULL, 10);
       if (options.order_id <= 0) errx(EXIT_FAILURE, "Invalid Order ID.");
       /* We assume the Order ID should not overflow long int, no errno checking here. */
       break;
@@ -204,12 +215,17 @@ int main(int argc, char **argv) {
     current_user.username, strlen(current_user.username),
     current_user.password, strlen(current_user.password));
   printf("---action:%d\n", action);
-  printf("---options: name:%s,  from:%s,  to:%s,  order_id:%ld\n",
-    options.name, options.from, options.to, options.order_id);
+  printf("---options: name:%s,  from:%s,  to:%s,  amount: %d,  order_id:%ld\n",
+    options.name, options.from, options.to, options.amount, options.order_id);
   #endif
 
-  if (action & ACTION_REGISTER) 
+  if (action & ACTION_REGISTER) {
     repeat_password();
+  }
+
+  /* Interactive interface end here */
+
+
 
 
   // prompt_username();

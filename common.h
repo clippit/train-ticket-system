@@ -15,6 +15,7 @@
 #define TRAIN_NUMBER_MAX_LENGTH   5
 #define TRAIN_STATION_MAX_LENGTH 20
 #define TRAIN_TIME_LENGTH         5
+#define MAX_AMOUNT_PER_ORDER     10
 
 typedef struct _user {
   int id;
@@ -35,10 +36,10 @@ typedef struct _train {
 } train;
 
 typedef struct _order {
-  long int id;
+  unsigned long int id;
   user user;
   train train;
-  int amount;
+  unsigned short int amount;
   time_t order_time;
 } order;
 
