@@ -18,14 +18,14 @@
 #define MAX_AMOUNT_PER_ORDER     10
 
 typedef struct _user {
-  int id;
+  unsigned long int id;
   char username [USERNAME_MAX_LENGTH + 1];
   char password [PASSWORD_MAX_LENGTH + 1];
   time_t register_time;
 } user;
 
 typedef struct _train {
-  int id;
+  unsigned int id;
   char name [TRAIN_NUMBER_MAX_LENGTH   + 1];
   char start [TRAIN_STATION_MAX_LENGTH + 1];
   char end   [TRAIN_STATION_MAX_LENGTH + 1];

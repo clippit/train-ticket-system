@@ -115,10 +115,12 @@ void repeat_password() {
 }
 
 int main(int argc, char **argv) {
+  /* Initialize environment. However `current_user` is global */
   short int mode = MODE_OFFLINE;
   int action = ACTION_NOACTION;
   client_options options = {"\0", "\0", "\0", -1, 1};
 
+  /* Start parsing arguments */
   static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h' },
     {"offline", no_argument, NULL, 'm' },
@@ -199,6 +201,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  /* If user does not provide username or password */
   while ( strlen(current_user.username) <= 0) {
     prompt_username();
   }
@@ -218,14 +221,8 @@ int main(int argc, char **argv) {
     repeat_password();
   }
 
-  if (mode == MODE_ONLINE) {
-    //TODO register socket functions
-  } else {
-    //TODO register message queue functions
-  }
-
-  /* Interactive interface end here */
-
+  /* Interactive interface end here. Client Controller on stage. */
+  register_running_mode(mode);
   client_run(&current_user, &options);
 
 
