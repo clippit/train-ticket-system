@@ -8,6 +8,7 @@
 #include <sys/msg.h>
 #include <err.h>
 #include "common.h"
+#include "mqueue.h"
 
 static int serv_qid = -1;
 static int cli_qid = -1;

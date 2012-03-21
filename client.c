@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include <string.h>
 #include "common.h"
+#include "controller/cclient.h"
 
 user current_user = {-1, "\0", "\0", -1};
 
@@ -116,13 +117,7 @@ void repeat_password() {
 int main(int argc, char **argv) {
   short int mode = MODE_OFFLINE;
   int action = ACTION_NOACTION;
-  struct options_t {
-    char name [TRAIN_NUMBER_MAX_LENGTH + 1];
-    char from[TRAIN_STATION_MAX_LENGTH + 1];
-    char to  [TRAIN_STATION_MAX_LENGTH + 1];
-    unsigned long int order_id;
-    unsigned short int amount;
-  } options = {"\0", "\0", "\0", -1, 1};
+  client_options options = {"\0", "\0", "\0", -1, 1};
 
   static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h' },
@@ -223,8 +218,15 @@ int main(int argc, char **argv) {
     repeat_password();
   }
 
+  if (mode == MODE_ONLINE) {
+    //TODO register socket functions
+  } else {
+    //TODO register message queue functions
+  }
+
   /* Interactive interface end here */
 
+  client_run(&current_user, &options);
 
 
 

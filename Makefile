@@ -1,36 +1,40 @@
 CC=gcc
-CFLAGS=-Wall
+MODEL_DIR=model
+CONTROLLER_DIR=controller
+CFLAGS=-Wall -I$(MODEL_DIR)
 DEBUG=1
 ifneq ($(DEBUG),)
 	CFLAGS += -g -DDEBUG
 else
 	CFLAGS += -O2
 endif
-OBJS_COMMON=common.o
 OBJS_SERVER=server.o
-OBJS_CLIENT=client.o
+OBJS_CLIENT=client.o cclient.o cclient_mqueue.o
 TARGET_SERVER=ticketd
 TARGET_CLIENT=ticket
 
-.PHONY : all client server clean $(OBJS_COMMON) $(OBJS_SERVER) $(OBJS_CLIENT)
+.PHONY : all client server clean $(OBJS_SERVER) $(OBJS_CLIENT)
 
 all: server client
 	
 
-client: $(OBJS_COMMON) $(OBJS_CLIENT)
+client: $(OBJS_CLIENT)
 	$(CC) $(CFLAGS) $^ -o $(TARGET_CLIENT)
 
-server: $(OBJS_COMMON) $(OBJS_SERVER)
+server: $(OBJS_SERVER)
 	$(CC) $(CFLAGS) $^ -o $(TARGET_SERVER)
 
-common.o: common.c common.h
+server.o: server.c
 	$(CC) $(CFLAGS) -c $<
 
-server.o: server.c $(OBJS_COMMON)
+client.o: client.c
 	$(CC) $(CFLAGS) -c $<
 
-client.o: client.c $(OBJS_COMMON)
+cclient.o: $(CONTROLLER_DIR)/cclient.c
+	$(CC) $(CFLAGS) -c $<
+
+cclient_mqueue.o: $(CONTROLLER_DIR)/cclient_mqueue.c
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f $(OBJS_COMMON) $(OBJS_CLIENT) $(OBJS_SERVER) $(TARGET_SERVER) $(TARGET_CLIENT) *~
+	rm -f $(OBJS_CLIENT) $(OBJS_SERVER) $(TARGET_SERVER) $(TARGET_CLIENT) *~
