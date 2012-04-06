@@ -81,7 +81,7 @@ void prompt_username() {
     else 
       success_flag = 1;
     /* flush stdin, if input is longer than buffer, the next fgets will not prompt user.
-       __fpurge is nonstandard and not portable. It introduced in glic since 2.1.95. */
+       __fpurge is nonstandard and not portable. It introduced in glibc since 2.1.95. */
     __fpurge(stdin);
   }
   read_cli_string_option("Username", username, payload.username, USERNAME_MAX_LENGTH);
