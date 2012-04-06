@@ -19,6 +19,8 @@ void register_running_mode(int mode) {
     syslog(LOG_ERR, "Internal Unknown Error.");
   }
   signal(SIGTERM, c.sigterm_hook);
+  signal(SIGINT,  c.sigterm_hook);
+  signal(SIGHUP,  c.sigterm_hook);
   atexit(c.exit_hook);
 }
 

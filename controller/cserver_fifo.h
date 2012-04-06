@@ -2,6 +2,7 @@
 #define _CONTROLLER_SERVER_FIFO_H
 
 #include "cserver.h"
+#include "fifo.h"
 
 void fs_init(void);
 void fs_listener(void);
