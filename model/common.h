@@ -68,7 +68,8 @@ typedef enum _server_response_e {
    ----------------------------- */
 
 #define RESPONSE_BUFFER 1200
-typedef struct _payload_t {
+
+typedef struct _request_t {
   pid_t client_pid;
   int   action;
   char  username [USERNAME_MAX_LENGTH + 1];
@@ -78,9 +79,11 @@ typedef struct _payload_t {
   char  to  [TRAIN_STATION_MAX_LENGTH + 1];
   unsigned long int order_id;
   unsigned short int amount;
-  server_response_e response_code;
-  char  response_content[RESPONSE_BUFFER + 1];
-} payload_t;
+} request_t;
 
+typedef struct _response_t {
+  server_response_e code;
+  char              content[RESPONSE_BUFFER + 1];
+} response_t;
 
 #endif

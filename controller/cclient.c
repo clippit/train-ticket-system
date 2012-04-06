@@ -19,8 +19,9 @@ void register_running_mode(int mode) {
   atexit(c.exit_hook);
 }
 
-void client_run(payload_t *payload) {
+void client_run(request_t *payload) {
+  response_t response = {0, "\0"};
   c.init(payload->client_pid);
-  c.request(payload);
-  puts(payload->response_content);
+  c.request(payload, &response);
+  puts(response.content);
 }

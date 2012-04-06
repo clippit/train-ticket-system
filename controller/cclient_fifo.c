@@ -28,8 +28,34 @@ void fc_init(pid_t client_pid) {
       err(EXIT_FAILURE, "Unable to create client pipe %s\n", client_pipe_name);
 }
 
-void fc_request(payload_t *payload) {
-  strcpy(payload->response_content, "Hello");
+void fc_request(request_t *request, response_t* response) {
+  if (send_request(request) && read_response(response)) {
+
+  }
+    
+}
+
+int send_request(request_t *request) {
+  int ret = 0;
+  int write_bytes;
+  size_t payload_size = sizeof(*request);
+  if (server_fd == -1) {
+    warnx("Server Pipe fault.");
+    return ret;
+  }
+  write_bytes = write(server_fd, request, payload_size);
+  if (write_bytes != payload_size) {
+    warnx("Sent request to server fault.");
+    return ret;
+  }
+  ret = 1;
+  return ret;
+}
+
+int read_response(response_t* response) {
+
+  strcpy(response->content, "Hello");
+  return 1;
 }
 
 void fc_cleanup(void) {
