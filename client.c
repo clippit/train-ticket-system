@@ -8,7 +8,7 @@
 #include "common.h"
 #include "controller/cclient.h"
 
-user current_user = {-1, "\0", "\0", -1};
+payload_t payload = {0, -1, "\0", "\0", "\0", "\0", "\0", 0, 0, 0, "\0"};
 
 void display_usage() {
   puts( "Train Ticket System Simulation -- Client" );
@@ -84,7 +84,7 @@ void prompt_username() {
        __fpurge is nonstandard and not portable. It introduced in glic since 2.1.95. */
     __fpurge(stdin);
   }
-  read_cli_string_option("Username", username, current_user.username, USERNAME_MAX_LENGTH);
+  read_cli_string_option("Username", username, payload.username, USERNAME_MAX_LENGTH);
   free(username);
 }
 
@@ -96,7 +96,7 @@ void prompt_password() {
     if (strlen(password) < 1 || strlen(password) > PASSWORD_MAX_LENGTH) {
       warnx("Password cannot be less than 1 character or longer than %d characters.", PASSWORD_MAX_LENGTH);
     } else {
-      read_cli_string_option("Password", password, current_user.password, PASSWORD_MAX_LENGTH);
+      read_cli_string_option("Password", password, payload.password, PASSWORD_MAX_LENGTH);
       success_flag = 1;
     }
   }
@@ -106,19 +106,18 @@ void repeat_password() {
   char *password2 = NULL;
   const char prompt[] = "Repeat Password: ";
   password2 = getpass(prompt);
-  while (strcmp(password2, current_user.password) != 0) {
+  while (strcmp(password2, payload.password) != 0) {
     warnx("Two passwords are not the same. Please try again.");
     prompt_password();
-    printf("%s\n", current_user.password);
+    printf("%s\n", payload.password);
     password2 = getpass(prompt);
   }
 }
 
 int main(int argc, char **argv) {
-  /* Initialize environment. However `current_user` is global */
+  /* Initialize environment. However `payload` is global */
   short int mode = MODE_OFFLINE;
   int action = ACTION_NOACTION;
-  client_options options = {"\0", "\0", "\0", -1, 1};
 
   /* Start parsing arguments */
   static const struct option longopts[] = {
@@ -155,10 +154,10 @@ int main(int argc, char **argv) {
       mode = MODE_ONLINE;
       break;
     case 'u':
-      if (optarg) read_cli_string_option("Username", optarg, current_user.username, USERNAME_MAX_LENGTH);
+      if (optarg) read_cli_string_option("Username", optarg, payload.username, USERNAME_MAX_LENGTH);
       break;
     case 'p':
-      if (optarg) read_cli_string_option("Password", optarg, current_user.password, PASSWORD_MAX_LENGTH);
+      if (optarg) read_cli_string_option("Password", optarg, payload.password, PASSWORD_MAX_LENGTH);
       break;
     case 'r':
       action |= ACTION_REGISTER;
@@ -176,24 +175,24 @@ int main(int argc, char **argv) {
       action |= ACTION_REFUND;
       break;
     case 'N':
-      read_cli_string_option("Train No.", optarg, options.name, TRAIN_NUMBER_MAX_LENGTH);
+      read_cli_string_option("Train No.", optarg, payload.name, TRAIN_NUMBER_MAX_LENGTH);
       break;
     case 'F':
-      read_cli_string_option("Originating station", optarg, options.from, TRAIN_STATION_MAX_LENGTH);
+      read_cli_string_option("Originating station", optarg, payload.from, TRAIN_STATION_MAX_LENGTH);
       break;
     case 'T':
-      read_cli_string_option("Terminal station", optarg, options.to, TRAIN_STATION_MAX_LENGTH);
+      read_cli_string_option("Terminal station", optarg, payload.to, TRAIN_STATION_MAX_LENGTH);
       break;
     case 'A':
       amount = strtoul(optarg, (char **)NULL, 10);
       if (amount < 1) errx(EXIT_FAILURE, "Invalid negative number.");
       if (amount > MAX_AMOUNT_PER_ORDER)
         errx(EXIT_FAILURE, "Your can only order less than %d tickets one time.", MAX_AMOUNT_PER_ORDER);
-      options.amount = amount;
+      payload.amount = amount;
       break;
     case 'O':
-      options.order_id = strtoul(optarg, (char **)NULL, 10);
-      if (options.order_id <= 0) errx(EXIT_FAILURE, "Invalid Order ID.");
+      payload.order_id = strtoul(optarg, (char **)NULL, 10);
+      if (payload.order_id <= 0) errx(EXIT_FAILURE, "Invalid Order ID.");
       /* We assume the Order ID should not overflow long int, no errno checking here. */
       break;
     default: // invalid argument
@@ -202,42 +201,34 @@ int main(int argc, char **argv) {
   }
 
   /* If user does not provide username or password */
-  while ( strlen(current_user.username) <= 0) {
+  while ( strlen(payload.username) <= 0) {
     prompt_username();
   }
-  while ( strlen(current_user.password) <= 0 ) {
+  while ( strlen(payload.password) <= 0 ) {
     prompt_password();
   }
-  #if DEBUG
-  printf("---username:%s  length:%zu\n---password:%s  length:%zu\n",
-    current_user.username, strlen(current_user.username),
-    current_user.password, strlen(current_user.password));
-  printf("---action:%d\n", action);
-  printf("---options: name:%s,  from:%s,  to:%s,  amount: %d,  order_id:%ld\n",
-    options.name, options.from, options.to, options.amount, options.order_id);
-  #endif
 
   if (action & ACTION_REGISTER) {
     repeat_password();
   }
 
+  payload.client_pid = getpid();
+  payload.action     = action;
+
+  #if DEBUG
+  printf("---username:%s  length:%zu\n---password:%s  length:%zu\n",
+    payload.username, strlen(payload.username),
+    payload.password, strlen(payload.password));
+  printf("---action:%d\n", payload.action);
+  printf("---client_pid:%d\n", payload.client_pid);
+  printf("---options: name:%s,  from:%s,  to:%s,  amount: %d,  order_id:%ld\n",
+    payload.name, payload.from, payload.to, payload.amount, payload.order_id);
+  #endif
+
   /* Interactive interface end here. Client Controller on stage. */
   register_running_mode(mode);
-  client_run(&current_user, &options);
+  client_run(&payload);
 
 
-
-  // prompt_username();
-  // mqueue_client_start();
-  // user u = {1, "test", "pass", 0};
-
-  // int i;
-  // for (i = 0; i < 5; ++i)
-  // {
-  //  mqueue_client_send(u);
-
-  //  sleep(5);
-  // }
-  // mqueue_client_end();
   exit(EXIT_SUCCESS);
 }

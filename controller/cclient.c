@@ -11,12 +11,7 @@ void register_running_mode(int mode) {
     // TODO Not implemented yet
   } else if (mode == MODE_OFFLINE) {
     c.init      = fc_init;
-    c.register_ = fc_register;
-    c.login     = fc_login;
-    c.search    = fc_search;
-    c.order     = fc_order;
-    c.view      = fc_view;
-    c.refund    = fc_refund;
+    c.request   = fc_request;
     c.exit_hook = fc_cleanup;
   } else {
     err(EXIT_FAILURE, "Internal Unknown Error.");
@@ -24,6 +19,8 @@ void register_running_mode(int mode) {
   atexit(c.exit_hook);
 }
 
-void client_run(user* current_user, client_options* options) {
+void client_run(payload_t *payload) {
   c.init();
+  c.request(payload);
+  puts(payload->response_content);
 }

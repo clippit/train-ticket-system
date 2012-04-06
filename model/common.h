@@ -54,4 +54,33 @@ typedef struct _order {
 #define ACTION_VIEW     (1 << 3)
 #define ACTION_REFUND   (1 << 4)
 
+
+/* Server Response type
+   ----------------------------- */
+
+typedef enum _server_response_e {
+  r_success = 0,
+  r_failure
+} server_response_e;
+
+
+/* Communication Payload
+   ----------------------------- */
+
+#define RESPONSE_BUFFER 1200
+typedef struct _payload_t {
+  pid_t client_pid;
+  int   action;
+  char  username [USERNAME_MAX_LENGTH + 1];
+  char  password [PASSWORD_MAX_LENGTH + 1];
+  char  name [TRAIN_NUMBER_MAX_LENGTH + 1];
+  char  from[TRAIN_STATION_MAX_LENGTH + 1];
+  char  to  [TRAIN_STATION_MAX_LENGTH + 1];
+  unsigned long int order_id;
+  unsigned short int amount;
+  server_response_e response_code;
+  char  response_content[RESPONSE_BUFFER + 1];
+} payload_t;
+
+
 #endif
