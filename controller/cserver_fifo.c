@@ -22,12 +22,12 @@ void fs_init(void) {
   unlink(SERVER_PIPE);
   if (mkfifo(SERVER_PIPE, 0777) == -1)
     err(EXIT_FAILURE, "Server startup error, no FIFO created\n");
+  /* open server pipe as read & write to prevent blocking and EOF, but we only read it actually*/
+  if ((server_fd = open(SERVER_PIPE, O_RDWR)) == -1)
+    err(EXIT_FAILURE, "Server startup error, no FIFO opened\n");
 }
 
 void fs_listener(void) {
-  if ((server_fd = open(SERVER_PIPE, O_RDONLY)) == -1)
-    err(EXIT_FAILURE, "Server startup error, no FIFO opened\n");
-
   while(1) {
     syslog(LOG_INFO, "server running.....");
     sleep(10);
