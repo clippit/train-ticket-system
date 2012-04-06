@@ -13,7 +13,7 @@ OBJS_CLIENT=client.o cclient.o cclient_fifo.o
 TARGET_SERVER=ticketd
 TARGET_CLIENT=ticket
 
-.PHONY : all client server clean $(OBJS_SERVER) $(OBJS_CLIENT)
+.PHONY : all client server clean $(OBJS_SERVER) $(OBJS_CLIENT) stop
 
 all: server client
 	
@@ -44,3 +44,6 @@ cclient_fifo.o: $(CONTROLLER_DIR)/cclient_fifo.c
 
 clean:
 	rm -f $(OBJS_CLIENT) $(OBJS_SERVER) $(TARGET_SERVER) $(TARGET_CLIENT) *~
+
+stop:
+	killall -v ticketd
