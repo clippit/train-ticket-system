@@ -4,7 +4,7 @@
 #include "common.h"
 
 struct controller_client_func {
-  void (*init)(void);
+  void (*init)(pid_t);
   void (*request)(payload_t*);
   void (*exit_hook)(void);
 } c;

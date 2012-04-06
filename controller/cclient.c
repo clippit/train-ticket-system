@@ -20,7 +20,7 @@ void register_running_mode(int mode) {
 }
 
 void client_run(payload_t *payload) {
-  c.init();
+  c.init(payload->client_pid);
   c.request(payload);
   puts(payload->response_content);
 }
