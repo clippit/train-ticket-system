@@ -14,7 +14,7 @@ void register_running_mode(int mode) {
     c.request   = fc_request;
     c.exit_hook = fc_cleanup;
   } else {
-    err(EXIT_FAILURE, "Internal Unknown Error.");
+    errx(EXIT_FAILURE, "Internal Unknown Error.");
   }
   atexit(c.exit_hook);
 }
@@ -22,6 +22,10 @@ void register_running_mode(int mode) {
 void client_run(request_t *payload) {
   response_t response = {0, "\0"};
   c.init(payload->client_pid);
-  c.request(payload, &response);
-  puts(response.content);
+  if (c.request(payload, &response)) {
+    puts(response.content);
+    puts(response.code == r_success ? "Operation Completed." : "Operation Failed.");
+  } else {
+    errx(EXIT_FAILURE, "Internal Error. Abort!");
+  }
 }

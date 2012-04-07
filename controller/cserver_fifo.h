@@ -15,4 +15,7 @@ void fs_listener(void);
 void fs_cleanup(void);
 void fs_sigterm(int);
 
+int read_request(request_t*);
+int send_response(const char*, const response_t*);
+
 #endif

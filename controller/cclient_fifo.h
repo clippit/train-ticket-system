@@ -5,7 +5,7 @@
 #include "fifo.h"
 
 void fc_init(pid_t);
-void fc_request(request_t*, response_t*);
+int  fc_request(request_t*, response_t*);
 void fc_cleanup(void);
 
 int send_request(request_t*);

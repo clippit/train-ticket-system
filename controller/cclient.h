@@ -5,7 +5,7 @@
 
 struct controller_client_func {
   void (*init)(pid_t);
-  void (*request)(request_t*, response_t*);
+  int  (*request)(request_t*, response_t*);
   void (*exit_hook)(void);
 } c;
 

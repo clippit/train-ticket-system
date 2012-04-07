@@ -16,11 +16,12 @@ void register_running_mode(int mode) {
     c.exit_hook    = fs_cleanup;
     c.sigterm_hook = fs_sigterm;
   } else {
-    syslog(LOG_ERR, "Internal Unknown Error.");
+    errx(EXIT_FAILURE, "Internal Unknown Error.");
   }
   signal(SIGTERM, c.sigterm_hook);
   signal(SIGINT,  c.sigterm_hook);
   signal(SIGHUP,  c.sigterm_hook);
+  signal(SIGCHLD, SIG_IGN);
   atexit(c.exit_hook);
 }
 
