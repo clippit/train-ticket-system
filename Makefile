@@ -22,7 +22,7 @@ client: $(OBJS_CLIENT)
 	$(CC) $(CFLAGS) $^ -o $(TARGET_CLIENT)
 
 server: $(OBJS_SERVER)
-	$(CC) $(CFLAGS) $^ -o $(TARGET_SERVER)
+	$(CC) $(CFLAGS) -lsqlite3 -lcrypt $^ -o $(TARGET_SERVER)
 
 server.o: server.c
 	$(CC) $(CFLAGS) -c $<

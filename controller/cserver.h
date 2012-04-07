@@ -1,6 +1,7 @@
 #ifndef _CONTROLLER_SERVER_H
 #define _CONTROLLER_SERVER_H
 
+#include <sqlite3.h>
 #include "common.h"
 
 struct controller_server_func {
@@ -21,7 +22,8 @@ void server_run();
 
 void action_dispatch(const request_t*, response_t*);
 void noaction(response_t*);
-void register_(response_t*, const char*, const char*);
-int  login(response_t*, const char*, const char*);
+int  register_(sqlite3*, response_t*, const char*, const char*);
+int  _do_register(sqlite3*, const char*, const char*);
+int  login(sqlite3*, response_t*, const char*, const char*);
 
 #endif

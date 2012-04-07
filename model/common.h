@@ -1,8 +1,6 @@
 #ifndef _COMMON_TICKET_H
 #define _COMMON_TICKET_H
 
-#include <time.h>
-
 /* Running mode
    ----------------------------- */
 #define MODE_OFFLINE 1
@@ -10,6 +8,8 @@
 
 /* Model
    ----------------------------- */
+#define DATABASE "data.sqlite"
+
 #define USERNAME_MAX_LENGTH      30
 #define PASSWORD_MAX_LENGTH      34
 #define TRAIN_NUMBER_MAX_LENGTH   5
