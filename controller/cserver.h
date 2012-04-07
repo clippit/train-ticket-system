@@ -19,4 +19,9 @@ struct controller_server_func {
 void register_running_mode(int mode);
 void server_run();
 
+void action_dispatch(const request_t*, response_t*);
+void noaction(response_t*);
+void register_(response_t*, const char*, const char*);
+int  login(response_t*, const char*, const char*);
+
 #endif

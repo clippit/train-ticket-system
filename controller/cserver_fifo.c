@@ -45,8 +45,8 @@ void fs_listener(void) {
       syslog(LOG_ERR, "Fork failed.");
       exit(EXIT_FAILURE);
     } else if (fork_pid == 0) {  // child
-      response_t response = {0, "Hello!!!!!!"};
-      // TODO handle request and make response
+      response_t response = {0, "\0"};
+      action_dispatch(&request, &response);  // entrance of action handling
       char client_pipe_name[PATH_MAX + 1] = {'\0'};
       (void)sprintf(client_pipe_name, CLIENT_PIPE, request.client_pid);
       if (!send_response(client_pipe_name, &response)) {
