@@ -43,7 +43,7 @@ cclient_fifo.o: $(CONTROLLER_DIR)/cclient_fifo.c
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	rm -f $(OBJS_CLIENT) $(OBJS_SERVER) $(TARGET_SERVER) $(TARGET_CLIENT) *~
+	rm -f $(OBJS_CLIENT) $(OBJS_SERVER) $(TARGET_SERVER) $(TARGET_CLIENT) *~ /tmp/client_*_pipe /tmp/server_pipe
 
 stop:
 	killall -v ticketd
