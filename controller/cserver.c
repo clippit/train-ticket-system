@@ -78,6 +78,7 @@ void action_dispatch(const request_t* request, response_t* response) {
     search(db, response, request->name, request->from, request->to);
   }
 
+  /* Don't handle ACTION_ORDER and ACTION_SEARCH the same time due to shared --number parameter */
   if ((action & ACTION_ORDER) && !(action & ACTION_SEARCH)) {
     take_order(db, response, user_id, request->name, request->amount);
   }
@@ -306,6 +307,7 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
 
   sqlite3_exec(db, "COMMIT;", 0, 0, 0);
 
+  syslog(LOG_INFO, "%s - Client Order - Order ID: %d, User ID: %d, Train: %s, Amount: %d", log_time(), order_id, user_id, name, amount);
   _generate_order(resp, order_id, name, start, end, start_time, end_time, price, amount, "");
 
   sqlite3_finalize(check_stmt);
@@ -341,6 +343,6 @@ void _generate_order(response_t* resp, const int order_id, const char* name, con
     "|                                 |\n"   // |                                 |
     "| Total: %-25d|\n"                       // | Total:                          |
     "+---------------------------------+\n",  // +---------------------------------+
-    order_id, strlen(order_time) == 0 ? "just now" : order_time, name, start, start_time, end, end_time, price, amount, price * amount);
+    order_id, strlen(order_time) == 0 ? "Just now" : order_time, name, start, start_time, end, end_time, price, amount, price * amount);
   strcat(resp->content, order_diagram);
 }
