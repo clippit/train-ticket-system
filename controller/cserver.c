@@ -82,6 +82,10 @@ void action_dispatch(const request_t* request, response_t* response) {
   if ((action & ACTION_ORDER) && !(action & ACTION_SEARCH)) {
     take_order(db, response, user_id, request->name, request->amount);
   }
+
+  if (action & ACTION_VIEW) {
+    view(db, response, user_id);
+  }
   
 
   if (sqlite3_close(db) != SQLITE_OK) {
@@ -345,4 +349,8 @@ void _generate_order(response_t* resp, const int order_id, const char* name, con
     "+---------------------------------+\n",  // +---------------------------------+
     order_id, strlen(order_time) == 0 ? "Just now" : order_time, name, start, start_time, end, end_time, price, amount, price * amount);
   strcat(resp->content, order_diagram);
+}
+
+void view(sqlite3* db, response_t* resp, const int user_id) {
+
 }
