@@ -67,7 +67,8 @@ typedef enum _server_response_e {
 /* Communication Payload
    ----------------------------- */
 
-#define RESPONSE_BUFFER 1200
+#define RESPONSE_BUFFER 3072
+#define MAX_DETAIL_ORDER   3
 
 typedef struct _request_t {
   pid_t client_pid;
@@ -83,7 +84,7 @@ typedef struct _request_t {
 
 typedef struct _response_t {
   server_response_e code;
-  char              content[RESPONSE_BUFFER + 1];
+  char              content[RESPONSE_BUFFER];
 } response_t;
 
 #endif

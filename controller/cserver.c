@@ -352,5 +352,40 @@ void _generate_order(response_t* resp, const int order_id, const char* name, con
 }
 
 void view(sqlite3* db, response_t* resp, const int user_id) {
+  syslog(LOG_INFO, "%s - Client View - User ID: %d", log_time(), user_id);
 
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare_v2(db,
+    "SELECT o.id, o.amount, o.order_time, t.name, t.start, t.end, t.start_time, t.end_time, t.price FROM [order] AS o "
+    "INNER JOIN timetable AS t ON o.train_id = t.id "
+    "WHERE user_id=? "
+    "ORDER BY order_time DESC", -1, &stmt, NULL);
+  sqlite3_bind_int(stmt, 1, user_id);
+  int count = 0;
+  while(sqlite3_step(stmt) == SQLITE_ROW) {
+    count++;
+    const int order_id     = sqlite3_column_int(stmt, 0);
+    const char *order_time = (const char*)sqlite3_column_text(stmt, 2);
+    if (count <= MAX_DETAIL_ORDER) {
+      /* Generate detailed order info */
+      const int  amount      = sqlite3_column_int(stmt, 1);
+      const char *name       = (const char*)sqlite3_column_text(stmt, 3);
+      const char *start      = (const char*)sqlite3_column_text(stmt, 4);
+      const char *end        = (const char*)sqlite3_column_text(stmt, 5);
+      const char *start_time = (const char*)sqlite3_column_text(stmt, 6);
+      const char *end_time   = (const char*)sqlite3_column_text(stmt, 7);
+      const int  price       = sqlite3_column_int(stmt, 8);
+      _generate_order(resp, order_id, name, start, end, start_time, end_time, price, amount, order_time);
+    } else {
+      /* Show Order summary only */
+      char short_info[50];
+      sprintf(short_info, "Order ID: %d, Order Time: %s\n", order_id, order_time);
+      strcat(resp->content, short_info);
+    }
+  }
+  char summary[70];
+  sprintf(summary, "[%d order(s) found. Only display details of latest %d orders.]\n\n", count, MAX_DETAIL_ORDER);
+  strcat(resp->content, summary);
+
+  sqlite3_finalize(stmt);
 }
