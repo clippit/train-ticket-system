@@ -94,6 +94,10 @@ void action_dispatch(const request_t* request, response_t* response) {
   }
 }
 
+
+/* Action Functions
+   ----------------------------- */
+
 void noaction(response_t *resp) {
   syslog(LOG_INFO, "%s - Client noaction", log_time());
   resp->code = r_failure;
@@ -132,36 +136,6 @@ int register_(sqlite3 *db, response_t* resp, const char* username, const char* p
     strcpy(resp->content, "An error occurred when registering.");
     break;
   }
-  return user_id;
-}
-
-const char* _encrypt_password(const char*password) {
-  unsigned long seed[2];
-  char salt[] = "$1$........";
-  const char *const seedchars =
-    "./0123456789ABCDEFGHIJKLMNOPQRST"
-    "UVWXYZabcdefghijklmnopqrstuvwxyz";
-  int i;
-  /* Generate a random seed. */
-  seed[0] = time(NULL);
-  seed[1] = getpid() ^ (seed[0] >> 14 & 0x30000);
-  /* Turn it into printable characters from `seedchars`. */
-  for (i = 0; i < 8; i++)
-    salt[3+i] = seedchars[(seed[i/5] >> (i%5)*6) & 0x3f];
-  return crypt(password, salt);
-}
-
-int _do_register(sqlite3* db, const char* username, const char* password) {
-  int user_id = -1;
-  const char* encrypted_password = _encrypt_password(password);
-  sqlite3_stmt *stmt = NULL;
-  sqlite3_prepare_v2(db, "INSERT INTO user VALUES(NULL, ?, ?, datetime('now'))", -1, &stmt, NULL);
-  sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
-  sqlite3_bind_text(stmt, 2, encrypted_password, -1, SQLITE_STATIC);
-  if (sqlite3_step(stmt) == SQLITE_DONE) {
-    user_id = sqlite3_last_insert_rowid(db);
-  }
-  sqlite3_finalize(stmt);
   return user_id;
 }
 
@@ -319,38 +293,6 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
   sqlite3_finalize(update_stmt);
 }
 
-void _order_failed(sqlite3* db, response_t* resp, sqlite3_stmt* check_stmt, sqlite3_stmt* order_stmt, sqlite3_stmt* update_stmt, const char* errmsg) {
-  sqlite3_exec(db, "ROLLBACK;", 0, 0, 0);
-  resp->code = r_failure;
-  strcat(resp->content, errmsg);
-  syslog(LOG_WARNING, "%s - Client Order - %s, Error: %s", log_time(), errmsg, sqlite3_errmsg(db));
-  sqlite3_finalize(check_stmt);
-  sqlite3_finalize(order_stmt);
-  sqlite3_finalize(update_stmt);
-}
-
-void _generate_order(response_t* resp, const int order_id, const char* name, const char* start, const char* end, const char* start_time, const char* end_time, const int price, const int amount, const char* order_time) {
-  char order_diagram[550];
-  sprintf(order_diagram,
-    "+---------------------------------+\n"   // +---------------------------------+
-    "| Order ID: %-22d|\n"                    // | Order ID:                       |
-    "| Order Time: %-19s |\n"                 // | Order Time: 0000-00-00 00:00:00 |
-    "|---------------------------------|\n"   // |---------------------------------|
-    "| Train No. %-22s|\n"                    // | Train No.: G1111                |
-    "| From:                           |\n"   // | From:                           |
-    "|   %-20s (%5s)  |\n"                    // |   12345678901234567890 (12:34)  |
-    "| To:                             |\n"   // | To:                             |
-    "|   %-20s (%5s)  |\n"                    // |   12345678901234567890 (12:34)  |
-    "|                                 |\n"   // |                                 |
-    "| Unit-price: %-20d|\n"                  // | Unit-price:                     |
-    "| Amount: %-24d|\n"                      // | Amount:                         |
-    "|                                 |\n"   // |                                 |
-    "| Total: %-25d|\n"                       // | Total:                          |
-    "+---------------------------------+\n",  // +---------------------------------+
-    order_id, strlen(order_time) == 0 ? "Just now" : order_time, name, start, start_time, end, end_time, price, amount, price * amount);
-  strcat(resp->content, order_diagram);
-}
-
 void view(sqlite3* db, response_t* resp, const int user_id) {
   syslog(LOG_INFO, "%s - Client View - User ID: %d", log_time(), user_id);
 
@@ -388,4 +330,70 @@ void view(sqlite3* db, response_t* resp, const int user_id) {
   strcat(resp->content, summary);
 
   sqlite3_finalize(stmt);
+}
+
+
+/* 'Private' Functions
+   ----------------------------- */
+
+const char* _encrypt_password(const char*password) {
+  unsigned long seed[2];
+  char salt[] = "$1$........";
+  const char *const seedchars =
+    "./0123456789ABCDEFGHIJKLMNOPQRST"
+    "UVWXYZabcdefghijklmnopqrstuvwxyz";
+  int i;
+  /* Generate a random seed. */
+  seed[0] = time(NULL);
+  seed[1] = getpid() ^ (seed[0] >> 14 & 0x30000);
+  /* Turn it into printable characters from `seedchars`. */
+  for (i = 0; i < 8; i++)
+    salt[3+i] = seedchars[(seed[i/5] >> (i%5)*6) & 0x3f];
+  return crypt(password, salt);
+}
+
+int _do_register(sqlite3* db, const char* username, const char* password) {
+  int user_id = -1;
+  const char* encrypted_password = _encrypt_password(password);
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare_v2(db, "INSERT INTO user VALUES(NULL, ?, ?, datetime('now'))", -1, &stmt, NULL);
+  sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, encrypted_password, -1, SQLITE_STATIC);
+  if (sqlite3_step(stmt) == SQLITE_DONE) {
+    user_id = sqlite3_last_insert_rowid(db);
+  }
+  sqlite3_finalize(stmt);
+  return user_id;
+}
+
+void _order_failed(sqlite3* db, response_t* resp, sqlite3_stmt* check_stmt, sqlite3_stmt* order_stmt, sqlite3_stmt* update_stmt, const char* errmsg) {
+  sqlite3_exec(db, "ROLLBACK;", 0, 0, 0);
+  resp->code = r_failure;
+  strcat(resp->content, errmsg);
+  syslog(LOG_WARNING, "%s - Client Order - %s, Error: %s", log_time(), errmsg, sqlite3_errmsg(db));
+  sqlite3_finalize(check_stmt);
+  sqlite3_finalize(order_stmt);
+  sqlite3_finalize(update_stmt);
+}
+
+void _generate_order(response_t* resp, const int order_id, const char* name, const char* start, const char* end, const char* start_time, const char* end_time, const int price, const int amount, const char* order_time) {
+  char order_diagram[550];
+  sprintf(order_diagram,
+    "+---------------------------------+\n"   // +---------------------------------+
+    "| Order ID: %-22d|\n"                    // | Order ID:                       |
+    "| Order Time: %-19s |\n"                 // | Order Time: 0000-00-00 00:00:00 |
+    "|---------------------------------|\n"   // |---------------------------------|
+    "| Train No. %-22s|\n"                    // | Train No.: G1111                |
+    "| From:                           |\n"   // | From:                           |
+    "|   %-20s (%5s)  |\n"                    // |   12345678901234567890 (12:34)  |
+    "| To:                             |\n"   // | To:                             |
+    "|   %-20s (%5s)  |\n"                    // |   12345678901234567890 (12:34)  |
+    "|                                 |\n"   // |                                 |
+    "| Unit-price: %-20d|\n"                  // | Unit-price:                     |
+    "| Amount: %-24d|\n"                      // | Amount:                         |
+    "|                                 |\n"   // |                                 |
+    "| Total: %-25d|\n"                       // | Total:                          |
+    "+---------------------------------+\n",  // +---------------------------------+
+    order_id, strlen(order_time) == 0 ? "Just now" : order_time, name, start, start_time, end, end_time, price, amount, price * amount);
+  strcat(resp->content, order_diagram);
 }
