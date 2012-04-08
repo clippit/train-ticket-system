@@ -86,8 +86,11 @@ void action_dispatch(const request_t* request, response_t* response) {
   if (action & ACTION_VIEW) {
     view(db, response, user_id);
   }
-  
 
+  if (action & ACTION_REFUND) {
+    refund(db, response, user_id, request->order_id);
+  }
+  
   if (sqlite3_close(db) != SQLITE_OK) {
     syslog(LOG_ERR, "Can't close databse: %s\n", sqlite3_errmsg(db));
     return;
@@ -244,13 +247,13 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
   sqlite3_exec(db, "BEGIN;", 0, 0, 0);
   int check_ret = sqlite3_step(check_stmt);
   if (check_ret == SQLITE_BUSY) {
-    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry. SQLITE_BUSY");
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry. SQLITE_BUSY", 1);
     return;
   } else if (check_ret == SQLITE_DONE) {
-    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not such Train Number.");
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not such Train Number.", 1);
     return;
   } else if (check_ret != SQLITE_ROW) {
-    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Database Error.");
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Database Error.", 1);
     return;
   }
 
@@ -264,14 +267,14 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
   const int available    = sqlite3_column_int(check_stmt, 7);
 
   if (available < amount) {
-    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not enough available tickets.");
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not enough available tickets.", 1);
     return;
   }
 
   sqlite3_bind_int(order_stmt, 2, train_id);
 
   if (sqlite3_step(order_stmt) != SQLITE_DONE) {
-    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry.");
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry.", 1);
     return;
   }
   int order_id = sqlite3_last_insert_rowid(db);
@@ -279,7 +282,7 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
   sqlite3_bind_int(update_stmt, 1, available - amount);
   sqlite3_bind_int(update_stmt, 2, train_id);
   if (sqlite3_step(update_stmt) != SQLITE_DONE) {
-    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Update remaining tickets failed.");
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Update remaining tickets failed.", 1);
     return;
   }
 
@@ -295,6 +298,7 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
 
 void view(sqlite3* db, response_t* resp, const int user_id) {
   syslog(LOG_INFO, "%s - Client View - User ID: %d", log_time(), user_id);
+  strcat(resp->content, "Your Orders:\n");
 
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare_v2(db,
@@ -332,6 +336,51 @@ void view(sqlite3* db, response_t* resp, const int user_id) {
   sqlite3_finalize(stmt);
 }
 
+void refund(sqlite3* db, response_t* resp, const int user_id, const int order_id) {
+  syslog(LOG_INFO, "%s - Client Refund", log_time());
+
+  sqlite3_stmt *check_stmt = NULL;
+  sqlite3_prepare_v2(db, "SELECT train_id, amount FROM [order] WHERE id=? AND user_id=? LIMIT 1", -1, &check_stmt, NULL);
+  sqlite3_bind_int(check_stmt, 1, order_id);
+  sqlite3_bind_int(check_stmt, 2, user_id);
+  if (sqlite3_step(check_stmt) != SQLITE_ROW) {
+    const char* errmsg = "Search Error. Was that order taken by you?";
+    resp->code = r_failure;
+    strcat(resp->content, errmsg);
+    syslog(LOG_WARNING, "%s - Client Refund - %s, Error: %s", log_time(), errmsg, sqlite3_errmsg(db));
+    sqlite3_finalize(check_stmt);
+    return;
+  }
+  const int train_id = sqlite3_column_int(check_stmt, 0);
+  const int amount   = sqlite3_column_int(check_stmt, 1);
+
+  sqlite3_stmt *delete_stmt = NULL;
+  sqlite3_prepare_v2(db, "DELETE FROM [order] WHERE id=?", -1, &delete_stmt, NULL);
+  sqlite3_bind_int(delete_stmt, 1, order_id);
+  sqlite3_stmt *update_stmt = NULL;
+  sqlite3_prepare_v2(db, "UPDATE timetable SET available=available+? WHERE id=?", -1, &update_stmt, NULL);
+  sqlite3_bind_int(update_stmt, 1, amount);
+  sqlite3_bind_int(update_stmt, 2, train_id);
+
+  sqlite3_exec(db, "BEGIN;", 0, 0, 0);
+  if (sqlite3_step(delete_stmt) != SQLITE_DONE) {
+    _order_refund_failed(db, resp, check_stmt, delete_stmt, update_stmt, "Refund failed", 0);
+    return;
+  }
+  if (sqlite3_step(update_stmt) != SQLITE_DONE) {
+    _order_refund_failed(db, resp, check_stmt, delete_stmt, update_stmt, "Update remaining tickets failed", 0);
+    return;
+  }
+  sqlite3_exec(db, "COMMIT;", 0, 0, 0);
+
+  syslog(LOG_INFO, "%s - Client Refund - Order ID: %d Refunded", log_time(), order_id);
+  strcat(resp->content, "Your order has been refunded.\n");
+
+  sqlite3_finalize(check_stmt);
+  sqlite3_finalize(delete_stmt);
+  sqlite3_finalize(update_stmt);
+}
+
 
 /* 'Private' Functions
    ----------------------------- */
@@ -366,14 +415,14 @@ int _do_register(sqlite3* db, const char* username, const char* password) {
   return user_id;
 }
 
-void _order_failed(sqlite3* db, response_t* resp, sqlite3_stmt* check_stmt, sqlite3_stmt* order_stmt, sqlite3_stmt* update_stmt, const char* errmsg) {
+void _order_refund_failed(sqlite3* db, response_t* resp, sqlite3_stmt* stmt1, sqlite3_stmt* stmt2, sqlite3_stmt* stmt3, const char* errmsg, const int is_order) {
   sqlite3_exec(db, "ROLLBACK;", 0, 0, 0);
   resp->code = r_failure;
   strcat(resp->content, errmsg);
-  syslog(LOG_WARNING, "%s - Client Order - %s, Error: %s", log_time(), errmsg, sqlite3_errmsg(db));
-  sqlite3_finalize(check_stmt);
-  sqlite3_finalize(order_stmt);
-  sqlite3_finalize(update_stmt);
+  syslog(LOG_WARNING, "%s - Client %s - %s, Error: %s", log_time(), is_order ? "Order" : "Refund", errmsg, sqlite3_errmsg(db));
+  sqlite3_finalize(stmt1);
+  sqlite3_finalize(stmt2);
+  sqlite3_finalize(stmt3);
 }
 
 void _generate_order(response_t* resp, const int order_id, const char* name, const char* start, const char* end, const char* start_time, const char* end_time, const int price, const int amount, const char* order_time) {
