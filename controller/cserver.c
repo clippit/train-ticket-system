@@ -63,6 +63,7 @@ void action_dispatch(const request_t* request, response_t* response) {
     sqlite3_close(db);
     return;
   }
+  sqlite3_busy_timeout(db, 1000);  // set a busy timeout to prevent database locking
 
   if (action & ACTION_REGISTER)
     user_id = register_(db, response, request->username, request->password);
@@ -150,7 +151,8 @@ int login(sqlite3* db, response_t* resp, const char* username, const char* passw
   sqlite3_stmt *stmt = NULL;
   sqlite3_prepare_v2(db, "SELECT * FROM user WHERE username=? LIMIT 1", -1, &stmt, NULL);
   sqlite3_bind_text(stmt, 1, username, -1, SQLITE_STATIC);
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
+  int step_ret = sqlite3_step(stmt);
+  if (step_ret == SQLITE_ROW) {
     const char* encrypted_password = (const char*)sqlite3_column_text(stmt, 2);
     const char* checked_password = crypt(password, encrypted_password);
     if (strcmp(checked_password, encrypted_password) == 0) {
@@ -167,8 +169,8 @@ int login(sqlite3* db, response_t* resp, const char* username, const char* passw
     syslog(LOG_INFO, "%s - Client login - Username %s login successfully", log_time(), username);
   } else {
     resp->code = r_failure;
-    strcpy(resp->content, "Sorry, your username or password is invalid.");
-    syslog(LOG_INFO, "%s - Client login - Username %s login failed.", log_time(), username);
+    strcpy(resp->content, "Sorry, you cannot login now. Maybe your username or password is incorrect. Please try again later.");
+    syslog(LOG_WARNING, "%s - Client login - Username %s login failed. Status: %d. Error: %s", log_time(), username, step_ret, sqlite3_errmsg(db));
   }
     
   sqlite3_finalize(stmt);
@@ -247,13 +249,13 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
   sqlite3_exec(db, "BEGIN;", 0, 0, 0);
   int check_ret = sqlite3_step(check_stmt);
   if (check_ret == SQLITE_BUSY) {
-    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry. SQLITE_BUSY", 1);
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, check_ret, "Order failed, please retry. SQLITE_BUSY", 1);
     return;
   } else if (check_ret == SQLITE_DONE) {
-    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not such Train Number.", 1);
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, check_ret, "There is not such Train Number.", 1);
     return;
   } else if (check_ret != SQLITE_ROW) {
-    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Database Error.", 1);
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, check_ret, "Database Error.", 1);
     return;
   }
 
@@ -267,22 +269,24 @@ void take_order(sqlite3* db, response_t* resp, const int user_id, const char* na
   const int available    = sqlite3_column_int(check_stmt, 7);
 
   if (available < amount) {
-    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not enough available tickets.", 1);
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, check_ret, "There is not enough available tickets.", 1);
     return;
   }
 
   sqlite3_bind_int(order_stmt, 2, train_id);
 
-  if (sqlite3_step(order_stmt) != SQLITE_DONE) {
-    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry.", 1);
+  int order_ret = sqlite3_step(order_stmt);
+  if (order_ret != SQLITE_DONE) {
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, order_ret, "Order failed, please retry.", 1);
     return;
   }
   int order_id = sqlite3_last_insert_rowid(db);
 
   sqlite3_bind_int(update_stmt, 1, available - amount);
   sqlite3_bind_int(update_stmt, 2, train_id);
-  if (sqlite3_step(update_stmt) != SQLITE_DONE) {
-    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, "Update remaining tickets failed.", 1);
+  int update_ret = sqlite3_step(update_stmt);
+  if (update_ret != SQLITE_DONE) {
+    _order_refund_failed(db, resp, check_stmt, order_stmt, update_stmt, update_ret, "Update remaining tickets failed.", 1);
     return;
   }
 
@@ -343,11 +347,12 @@ void refund(sqlite3* db, response_t* resp, const int user_id, const int order_id
   sqlite3_prepare_v2(db, "SELECT train_id, amount FROM [order] WHERE id=? AND user_id=? LIMIT 1", -1, &check_stmt, NULL);
   sqlite3_bind_int(check_stmt, 1, order_id);
   sqlite3_bind_int(check_stmt, 2, user_id);
-  if (sqlite3_step(check_stmt) != SQLITE_ROW) {
+  int step_ret = sqlite3_step(check_stmt);
+  if (step_ret != SQLITE_ROW) {
     const char* errmsg = "Search Error. Was that order taken by you?";
     resp->code = r_failure;
     strcat(resp->content, errmsg);
-    syslog(LOG_WARNING, "%s - Client Refund - %s, Error: %s", log_time(), errmsg, sqlite3_errmsg(db));
+    syslog(LOG_WARNING, "%s - Client Refund - %s, Status: %d, Error: %s", log_time(), errmsg, step_ret, sqlite3_errmsg(db));
     sqlite3_finalize(check_stmt);
     return;
   }
@@ -363,12 +368,14 @@ void refund(sqlite3* db, response_t* resp, const int user_id, const int order_id
   sqlite3_bind_int(update_stmt, 2, train_id);
 
   sqlite3_exec(db, "BEGIN;", 0, 0, 0);
-  if (sqlite3_step(delete_stmt) != SQLITE_DONE) {
-    _order_refund_failed(db, resp, check_stmt, delete_stmt, update_stmt, "Refund failed", 0);
+  int delete_ret = sqlite3_step(delete_stmt);
+  if (delete_ret != SQLITE_DONE) {
+    _order_refund_failed(db, resp, check_stmt, delete_stmt, update_stmt, delete_ret, "Refund failed", 0);
     return;
   }
-  if (sqlite3_step(update_stmt) != SQLITE_DONE) {
-    _order_refund_failed(db, resp, check_stmt, delete_stmt, update_stmt, "Update remaining tickets failed", 0);
+  int update_ret = sqlite3_step(update_stmt);
+  if (update_ret != SQLITE_DONE) {
+    _order_refund_failed(db, resp, check_stmt, delete_stmt, update_stmt, update_ret, "Update remaining tickets failed", 0);
     return;
   }
   sqlite3_exec(db, "COMMIT;", 0, 0, 0);
@@ -415,11 +422,11 @@ int _do_register(sqlite3* db, const char* username, const char* password) {
   return user_id;
 }
 
-void _order_refund_failed(sqlite3* db, response_t* resp, sqlite3_stmt* stmt1, sqlite3_stmt* stmt2, sqlite3_stmt* stmt3, const char* errmsg, const int is_order) {
+void _order_refund_failed(sqlite3* db, response_t* resp, sqlite3_stmt* stmt1, sqlite3_stmt* stmt2, sqlite3_stmt* stmt3, const int status, const char* errmsg, const int is_order) {
   sqlite3_exec(db, "ROLLBACK;", 0, 0, 0);
   resp->code = r_failure;
   strcat(resp->content, errmsg);
-  syslog(LOG_WARNING, "%s - Client %s - %s, Error: %s", log_time(), is_order ? "Order" : "Refund", errmsg, sqlite3_errmsg(db));
+  syslog(LOG_WARNING, "%s - Client %s - %s, Status: %d, Error: %s", log_time(), is_order ? "Order" : "Refund", errmsg, status, sqlite3_errmsg(db));
   sqlite3_finalize(stmt1);
   sqlite3_finalize(stmt2);
   sqlite3_finalize(stmt3);

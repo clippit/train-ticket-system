@@ -44,7 +44,7 @@ void display_usage() {
   //puts( "" );
   puts( "Refund Action:" );
   puts( "  -f, --refund          You need provide order info via the option below.");
-  puts( "  -O, --order ID        Order ID" );
+  puts( "  -O, --orderid ID      Order ID" );
 
   exit(EXIT_SUCCESS);
 }
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
     {"from", required_argument, NULL, 'F'},
     {"to", required_argument, NULL, 'T'},
     {"amount", required_argument, NULL, 'A'},
-    {"order", required_argument, NULL, 'O'},
+    {"orderid", required_argument, NULL, 'O'},
     {NULL, no_argument, NULL, 0}
   };
   static const char *shortopts = "hmMu:p:rsovfN:F:T:A:O:";
