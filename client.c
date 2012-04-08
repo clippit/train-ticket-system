@@ -109,7 +109,6 @@ void repeat_password() {
   while (strcmp(password2, payload.password) != 0) {
     warnx("Two passwords are not the same. Please try again.");
     prompt_password();
-    printf("%s\n", payload.password);
     password2 = getpass(prompt);
   }
 }
