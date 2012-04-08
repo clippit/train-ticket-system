@@ -73,6 +73,10 @@ void action_dispatch(const request_t* request, response_t* response) {
     sqlite3_close(db);
     return;
   }
+
+  if (action & ACTION_SEARCH) {
+    search(db, response, request->name, request->from, request->to);
+  }
   
 
   if (sqlite3_close(db) != SQLITE_OK) {
@@ -107,7 +111,7 @@ int register_(sqlite3 *db, response_t* resp, const char* username, const char* p
   case SQLITE_DONE:
     if ((user_id = _do_register(db, username, password)) > 0) {
       syslog(LOG_INFO, "%s - Client register - Username: %s, User ID: %d", log_time(), username, user_id);
-      sprintf(welcome, "Welcome new user, %s \n", username);
+      sprintf(welcome, "Welcome new user, %s \n\n", username);
       strcat(resp->content, welcome);
     } else {
       syslog(LOG_WARNING, "%s - Client register - Failed. Username: %s ", log_time(), username);
@@ -168,7 +172,7 @@ int login(sqlite3* db, response_t* resp, const char* username, const char* passw
       user_id = sqlite3_column_int(stmt, 0);
       const char *register_time = (const char*)sqlite3_column_text(stmt, 3);
       char welcome[USERNAME_MAX_LENGTH + 60];
-      sprintf(welcome, "Welcome, %s (Registered at %s)\n", username, register_time);
+      sprintf(welcome, "Welcome, %s (Registered at %s)\n\n", username, register_time);
       strcat(resp->content, welcome);
     }
   }
@@ -183,4 +187,60 @@ int login(sqlite3* db, response_t* resp, const char* username, const char* passw
     
   sqlite3_finalize(stmt);
   return user_id;
+}
+
+void search(sqlite3* db, response_t* resp, const char* name, const char* from, const char* to) {
+  syslog(LOG_INFO, "%s - Client Search - Name: %s, From: %s, To: %s", log_time(), name, from, to);
+
+  sqlite3_stmt *stmt = NULL;
+  sqlite3_prepare_v2(db,
+    "SELECT * FROM timetable "
+    "WHERE name LIKE '%' || ? || '%' "
+    "AND start LIKE '%' || ? || '%' "
+    "AND end LIKE '%' || ? || '%'",
+    -1, &stmt, NULL);
+  sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 2, from, -1, SQLITE_STATIC);
+  sqlite3_bind_text(stmt, 3,   to, -1, SQLITE_STATIC);
+  int count = 0;
+  char result_header[200];
+  sprintf(result_header,
+    "%*s  %*s  %*s  %*s  %*s  %s  %s\n"
+    "=============================================================================\n",
+    TRAIN_NUMBER_MAX_LENGTH, "No.",
+    TRAIN_STATION_MAX_LENGTH, "Originating Station",
+    TRAIN_STATION_MAX_LENGTH, "Terminal Station",
+    TRAIN_TIME_LENGTH, "Start",
+    TRAIN_TIME_LENGTH, "End",
+    "Price", "Avlb.");
+  strcat(resp->content, result_header);
+  while(sqlite3_step(stmt) == SQLITE_ROW) {
+    const unsigned char* name       = sqlite3_column_text(stmt, 1);
+    const unsigned char* start      = sqlite3_column_text(stmt, 2);
+    const unsigned char* end        = sqlite3_column_text(stmt, 3);
+    const unsigned char* start_time = sqlite3_column_text(stmt, 4);
+    const unsigned char* end_time   = sqlite3_column_text(stmt, 5);
+    const int price                 = sqlite3_column_int(stmt, 6);
+    const int available             = sqlite3_column_int(stmt, 7);
+    char result[80];
+    sprintf(result, "%*s  %*s  %*s  %*s  %*s  %5d  %5d\n",
+      TRAIN_NUMBER_MAX_LENGTH, name,
+      TRAIN_STATION_MAX_LENGTH, start,
+      TRAIN_STATION_MAX_LENGTH, end,
+      TRAIN_TIME_LENGTH, start_time,
+      TRAIN_TIME_LENGTH, end_time,
+      price, available);
+    strcat(resp->content, result);
+    count++;
+  }
+
+  if (count == 0) {
+    strcat(resp->content, "[Sorry, no results match your criteria]\n\n");
+  } else {
+    char summary[30];
+    sprintf(summary, "[%d record(s) found.]\n\n", count);
+    strcat(resp->content, summary);
+  }
+
+  sqlite3_finalize(stmt);
 }

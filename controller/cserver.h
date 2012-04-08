@@ -25,5 +25,6 @@ void noaction(response_t*);
 int  register_(sqlite3*, response_t*, const char*, const char*);
 int  _do_register(sqlite3*, const char*, const char*);
 int  login(sqlite3*, response_t*, const char*, const char*);
+void search(sqlite3*, response_t*, const char*, const char*, const char*);
 
 #endif
