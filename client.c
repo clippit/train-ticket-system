@@ -8,7 +8,7 @@
 #include "common.h"
 #include "controller/cclient.h"
 
-request_t payload = {0, -1, "\0", "\0", "\0", "\0", "\0", 0, 0};
+request_t payload = {0, -1, "\0", "\0", "\0", "\0", "\0", 0, 1};
 
 void display_usage() {
   puts( "Train Ticket System Simulation -- Client" );

@@ -77,6 +77,10 @@ void action_dispatch(const request_t* request, response_t* response) {
   if (action & ACTION_SEARCH) {
     search(db, response, request->name, request->from, request->to);
   }
+
+  if ((action & ACTION_ORDER) && !(action & ACTION_SEARCH)) {
+    take_order(db, response, user_id, request->name, request->amount);
+  }
   
 
   if (sqlite3_close(db) != SQLITE_OK) {
@@ -243,4 +247,100 @@ void search(sqlite3* db, response_t* resp, const char* name, const char* from, c
   }
 
   sqlite3_finalize(stmt);
+}
+
+void take_order(sqlite3* db, response_t* resp, const int user_id, const char* name, const unsigned short int amount) {
+  syslog(LOG_INFO, "%s - Client Order", log_time());
+
+  sqlite3_stmt *check_stmt = NULL;
+  sqlite3_prepare_v2(db, "SELECT * FROM timetable WHERE name=? LIMIT 1", -1, &check_stmt, NULL);
+  sqlite3_bind_text(check_stmt, 1, name, -1, SQLITE_STATIC);
+  sqlite3_stmt *order_stmt = NULL;
+  sqlite3_prepare_v2(db, "INSERT INTO [order] VALUES(NULL, ?, ?, ?, datetime('now', 'localtime'))", -1, &order_stmt, NULL);
+  sqlite3_bind_int(order_stmt, 1, user_id);
+  sqlite3_bind_int(order_stmt, 3, amount);
+  sqlite3_stmt *update_stmt = NULL;
+  sqlite3_prepare_v2(db, "UPDATE timetable SET available=? WHERE id=?", -1, &update_stmt, NULL);
+
+  sqlite3_exec(db, "BEGIN;", 0, 0, 0);
+  int check_ret = sqlite3_step(check_stmt);
+  if (check_ret == SQLITE_BUSY) {
+    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry. SQLITE_BUSY");
+    return;
+  } else if (check_ret == SQLITE_DONE) {
+    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not such Train Number.");
+    return;
+  } else if (check_ret != SQLITE_ROW) {
+    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Database Error.");
+    return;
+  }
+
+  /* Find the train. */
+  const int train_id     = sqlite3_column_int(check_stmt, 0);
+  const char* start      = (const char*)sqlite3_column_text(check_stmt, 2);
+  const char* end        = (const char*)sqlite3_column_text(check_stmt, 3);
+  const char* start_time = (const char*)sqlite3_column_text(check_stmt, 4);
+  const char* end_time   = (const char*)sqlite3_column_text(check_stmt, 5);
+  const int price        = sqlite3_column_int(check_stmt, 6);
+  const int available    = sqlite3_column_int(check_stmt, 7);
+
+  if (available < amount) {
+    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "There is not enough available tickets.");
+    return;
+  }
+
+  sqlite3_bind_int(order_stmt, 2, train_id);
+
+  if (sqlite3_step(order_stmt) != SQLITE_DONE) {
+    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Order failed, please retry.");
+    return;
+  }
+  int order_id = sqlite3_last_insert_rowid(db);
+
+  sqlite3_bind_int(update_stmt, 1, available - amount);
+  sqlite3_bind_int(update_stmt, 2, train_id);
+  if (sqlite3_step(update_stmt) != SQLITE_DONE) {
+    _order_failed(db, resp, check_stmt, order_stmt, update_stmt, "Update remaining tickets failed.");
+    return;
+  }
+
+  sqlite3_exec(db, "COMMIT;", 0, 0, 0);
+
+  _generate_order(resp, order_id, name, start, end, start_time, end_time, price, amount, "");
+
+  sqlite3_finalize(check_stmt);
+  sqlite3_finalize(order_stmt);
+  sqlite3_finalize(update_stmt);
+}
+
+void _order_failed(sqlite3* db, response_t* resp, sqlite3_stmt* check_stmt, sqlite3_stmt* order_stmt, sqlite3_stmt* update_stmt, const char* errmsg) {
+  sqlite3_exec(db, "ROLLBACK;", 0, 0, 0);
+  resp->code = r_failure;
+  strcat(resp->content, errmsg);
+  syslog(LOG_WARNING, "%s - Client Order - %s, Error: %s", log_time(), errmsg, sqlite3_errmsg(db));
+  sqlite3_finalize(check_stmt);
+  sqlite3_finalize(order_stmt);
+  sqlite3_finalize(update_stmt);
+}
+
+void _generate_order(response_t* resp, const int order_id, const char* name, const char* start, const char* end, const char* start_time, const char* end_time, const int price, const int amount, const char* order_time) {
+  char order_diagram[550];
+  sprintf(order_diagram,
+    "+---------------------------------+\n"   // +---------------------------------+
+    "| Order ID: %-22d|\n"                    // | Order ID:                       |
+    "| Order Time: %-19s |\n"                 // | Order Time: 0000-00-00 00:00:00 |
+    "|---------------------------------|\n"   // |---------------------------------|
+    "| Train No. %-22s|\n"                    // | Train No.: G1111                |
+    "| From:                           |\n"   // | From:                           |
+    "|   %-20s (%5s)  |\n"                    // |   12345678901234567890 (12:34)  |
+    "| To:                             |\n"   // | To:                             |
+    "|   %-20s (%5s)  |\n"                    // |   12345678901234567890 (12:34)  |
+    "|                                 |\n"   // |                                 |
+    "| Unit-price: %-20d|\n"                  // | Unit-price:                     |
+    "| Amount: %-24d|\n"                      // | Amount:                         |
+    "|                                 |\n"   // |                                 |
+    "| Total: %-25d|\n"                       // | Total:                          |
+    "+---------------------------------+\n",  // +---------------------------------+
+    order_id, strlen(order_time) == 0 ? "just now" : order_time, name, start, start_time, end, end_time, price, amount, price * amount);
+  strcat(resp->content, order_diagram);
 }

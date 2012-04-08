@@ -26,5 +26,8 @@ int  register_(sqlite3*, response_t*, const char*, const char*);
 int  _do_register(sqlite3*, const char*, const char*);
 int  login(sqlite3*, response_t*, const char*, const char*);
 void search(sqlite3*, response_t*, const char*, const char*, const char*);
+void take_order(sqlite3*, response_t*, const int, const char*, const unsigned short int);
+void _order_failed(sqlite3*, response_t*, sqlite3_stmt*, sqlite3_stmt*, sqlite3_stmt*, const char*);
+void _generate_order(response_t*, const int, const char*, const char*, const char*, const char*, const char*, const int, const int, const char*);
 
 #endif
