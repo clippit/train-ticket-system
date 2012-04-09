@@ -4,12 +4,15 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <syslog.h>
+#include <string.h>
+#include <errno.h>
 #include <err.h>
 #include <limits.h>
 #include "cserver_fifo.h"
 #include "cserver.h"
 
-static int server_fd = -1;
+static int server_fd       = -1;
+static int server_fd_write = -1;
 
 void fs_init(void) {
   #ifdef DEBUG
@@ -21,8 +24,11 @@ void fs_init(void) {
   if (mkfifo(SERVER_PIPE, 0777) == -1)
     err(EXIT_FAILURE, "Server startup error, no FIFO created\n");
   /* open server pipe as read & write to prevent blocking and EOF, but we only read it actually*/
-  if ((server_fd = open(SERVER_PIPE, O_RDWR)) == -1)
+  if ((server_fd = open(SERVER_PIPE, O_RDONLY | O_NONBLOCK)) == -1)
     err(EXIT_FAILURE, "Server startup error, no FIFO opened\n");
+  if ((server_fd_write = open(SERVER_PIPE, O_WRONLY)) == -1)
+    err(EXIT_FAILURE, "server startup error, no FIFO for writing opened\n");
+  clr_fl(server_fd, O_NONBLOCK);
 }
 
 void fs_listener(void) {
@@ -111,4 +117,18 @@ void fs_sigterm(int sig) {
   syslog(LOG_INFO, "receive signal %d", sig);
   #endif
   exit(EXIT_SUCCESS);
+}
+
+void clr_fl(int fd, int flags) {
+  int val;
+
+  if ((val = fcntl(fd, F_GETFL, 0)) == -1) {
+      err(EXIT_FAILURE, "fcntl() error : %s", strerror(errno));
+  }
+  val &= ~flags; /* turn flags off */
+
+  if (fcntl(fd, F_SETFL, val) == -1) {
+      err(EXIT_FAILURE, "fcntl() error : %s", strerror(errno));
+  }
+  return;
 }
