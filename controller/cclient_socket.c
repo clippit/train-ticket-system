@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 #include "cclient_socket.h"
 
 extern char hostname[HOSTNAME_MAX_LENTH + 1];
@@ -19,6 +20,7 @@ void sc_init(pid_t client_pid) {
 
   struct addrinfo hints, *servinfo, *p;
   int rv;
+  char addr[INET6_ADDRSTRLEN];
 
   memset(&hints, 0, sizeof(hints));
   hints.ai_flags    = AI_CANONNAME;
@@ -35,7 +37,8 @@ void sc_init(pid_t client_pid) {
     }
     if (connect(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
       close(sockfd);
-      warn("Cannot connect to socket");
+      inet_ntop(p->ai_family, _get_in_addr((struct sockaddr *)p->ai_addr), addr, sizeof(addr));
+      warn("Cannot connect to socket. Address: %s.", addr);
       continue;
     }
     break;  // if we get here, we must have connected successfully
@@ -44,6 +47,8 @@ void sc_init(pid_t client_pid) {
   if (p == NULL)
     err(EXIT_FAILURE, "Failed to connect server");
 
+  inet_ntop(p->ai_family, _get_in_addr((struct sockaddr *)p->ai_addr), addr, sizeof(addr));
+  printf("Connecting to %s...\n", addr);
   freeaddrinfo(servinfo);
 }
 
@@ -53,4 +58,11 @@ int  sc_request(request_t* request, response_t* response) {
 
 void sc_cleanup(void) {
 
+}
+
+inline void *_get_in_addr(struct sockaddr *sa) {
+  /* get socket address */
+  if (sa->sa_family == AF_INET)
+    return &(((struct sockaddr_in*)sa)->sin_addr);
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
