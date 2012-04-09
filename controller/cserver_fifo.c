@@ -4,8 +4,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <syslog.h>
-#include <string.h>
-#include <errno.h>
 #include <err.h>
 #include <limits.h>
 #include "cserver_fifo.h"
@@ -28,7 +26,7 @@ void fs_init(void) {
     err(EXIT_FAILURE, "Server startup error, no FIFO opened\n");
   if ((server_fd_write = open(SERVER_PIPE, O_WRONLY)) == -1)
     err(EXIT_FAILURE, "server startup error, no FIFO for writing opened\n");
-  clr_fl(server_fd, O_NONBLOCK);
+  _clr_fl(server_fd, O_NONBLOCK);
 }
 
 void fs_listener(void) {
@@ -38,7 +36,7 @@ void fs_listener(void) {
     #endif
 
     request_t request = {0, -1, "\0", "\0", "\0", "\0", "\0", 0, 0};
-    if (!read_request(&request)) {
+    if (!_fifo_read_request(&request)) {
       syslog(LOG_ERR, "An error occurred when reading request.");
       continue;
     }
@@ -55,7 +53,7 @@ void fs_listener(void) {
       action_dispatch(&request, &response);  // entrance of action handling
       char client_pipe_name[PATH_MAX + 1] = {'\0'};
       (void)sprintf(client_pipe_name, CLIENT_PIPE, request.client_pid);
-      if (!send_response(client_pipe_name, &response)) {
+      if (!_fifo_send_response(client_pipe_name, &response)) {
         syslog(LOG_ERR, "An error occured when sending response.");
         _exit(EXIT_FAILURE);
       }
@@ -66,7 +64,7 @@ void fs_listener(void) {
   }
 }
 
-int read_request(request_t* request) {
+int _fifo_read_request(request_t* request) {
   int ret = 0;
   int read_bytes;
   int request_size = sizeof(*request);
@@ -83,7 +81,7 @@ int read_request(request_t* request) {
   return ret = 1;
 }
 
-int send_response(const char* client_pipe_name, const response_t *response) {
+int _fifo_send_response(const char* client_pipe_name, const response_t *response) {
   int ret = 0;
   int client_fd = -1;
   int write_bytes;
@@ -119,16 +117,16 @@ void fs_sigterm(int sig) {
   exit(EXIT_SUCCESS);
 }
 
-void clr_fl(int fd, int flags) {
+void _clr_fl(int fd, int flags) {
   int val;
 
   if ((val = fcntl(fd, F_GETFL, 0)) == -1) {
-      err(EXIT_FAILURE, "fcntl() error : %s", strerror(errno));
+      err(EXIT_FAILURE, "fcntl() error");
   }
   val &= ~flags; /* turn flags off */
 
   if (fcntl(fd, F_SETFL, val) == -1) {
-      err(EXIT_FAILURE, "fcntl() error : %s", strerror(errno));
+      err(EXIT_FAILURE, "fcntl() error");
   }
   return;
 }

@@ -8,7 +8,8 @@ void fc_init(pid_t);
 int  fc_request(request_t*, response_t*);
 void fc_cleanup(void);
 
-int send_request(request_t*);
-int read_response(response_t*);
+int _fifo_send_request(request_t*);
+int _fifo_read_response(response_t*);
+int _fifo_open_response();
 
 #endif

@@ -30,7 +30,7 @@ void fc_init(pid_t client_pid) {
 
 int fc_request(request_t *request, response_t* response) {
   int ret = 0;
-  if (send_request(request) && read_response(response)) {
+  if (_fifo_send_request(request) && _fifo_read_response(response)) {
     ret = 1;
   } else {
     warnx("An error occurred during communication.");
@@ -38,7 +38,7 @@ int fc_request(request_t *request, response_t* response) {
   return ret;
 }
 
-int send_request(request_t *request) {
+int _fifo_send_request(request_t *request) {
   int ret = 0;
   int write_bytes;
   size_t payload_size = sizeof(*request);
@@ -54,7 +54,7 @@ int send_request(request_t *request) {
   return ret = 1;
 }
 
-int open_response() {
+int _fifo_open_response() {
   if (client_pipe_name[0] == '\0')
     return 0;
   if (client_fd != -1)
@@ -71,9 +71,9 @@ int open_response() {
   return 0;
 }
 
-int read_response(response_t* response) {
+int _fifo_read_response(response_t* response) {
   int ret = 0;
-  if(!open_response()) {
+  if(!_fifo_open_response()) {
     warnx("Open response pipe failed.");
     return ret;
   }
