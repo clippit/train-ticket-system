@@ -29,9 +29,19 @@ params=("-u user1 -p 123456"
 
 # start
 killall ticketd
-./ticketd
+
+if [[ $1 == online ]]; then
+	./ticketd -M
+else
+	./ticketd
+fi
+
 for p in "${params[@]}"; do
-	./ticket $p &
+	if [[ $1 == online ]]; then
+		./ticket -M localhost $p &
+	else
+		./ticket $p &
+	fi
 done
 
 wait
