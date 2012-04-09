@@ -63,6 +63,7 @@
     ticket [MODE] [-u USERNAME] [-p PASSWORD] [-r|-s|-o|-v|-f] [OPTIONS ...]
 
 运行模式：
+
     -m, --offline           离线模式，使用FIFO，默认启动模式
     -M, --online HOSTNAME   在线模式，使用Socket，需要指定连接的主机名
 
