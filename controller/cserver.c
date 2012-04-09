@@ -10,10 +10,14 @@
 #include <crypt.h>
 #include "cserver.h"
 #include "cserver_fifo.h"
+#include "cserver_socket.h"
 
 void register_running_mode(int mode) {
   if (mode == MODE_ONLINE) {
-    // TODO Not implemented yet
+    c.init         = ss_init;
+    c.listener     = ss_listener;
+    c.exit_hook    = ss_cleanup;
+    c.sigterm_hook = ss_sigterm;
   } else if (mode == MODE_OFFLINE) {
     c.init         = fs_init;
     c.listener     = fs_listener;

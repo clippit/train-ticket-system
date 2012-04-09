@@ -38,7 +38,7 @@ void sc_init(pid_t client_pid) {
     if (connect(sockfd, p->ai_addr, p->ai_addrlen) < 0) {
       close(sockfd);
       inet_ntop(p->ai_family, _get_in_addr((struct sockaddr *)p->ai_addr), addr, sizeof(addr));
-      warn("Cannot connect to socket. Address: %s.", addr);
+      warn("Cannot connect to socket. Address: %s ", addr);
       continue;
     }
     break;  // if we get here, we must have connected successfully
@@ -52,17 +52,56 @@ void sc_init(pid_t client_pid) {
   freeaddrinfo(servinfo);
 }
 
-int  sc_request(request_t* request, response_t* response) {
-  return 0;
+int sc_request(request_t* request, response_t* response) {
+  int ret = 0;
+  if (_socket_send_request(request) && _socket_read_response(response)) {
+    ret = 1;
+  } else {
+    warn("An error occurred during communication.");
+  }
+  return ret;
+}
+
+int _socket_send_request(request_t* request) {
+  int ret = 0;
+  ssize_t send_bytes;
+  size_t payload_size = sizeof(*request);
+  if (sockfd == -1) {
+    warnx("Server Socket Error.");
+    return ret;
+  }
+  send_bytes = send(sockfd, request, payload_size, 0);
+  if (send_bytes != payload_size) {
+    warn("Sent request to server fault.");
+    return ret;
+  }
+  return ret = 1;
+}
+
+int _socket_read_response(response_t* response) {
+  #ifdef DEBUG
+  printf("---%d: start _socket_read_response...\n", getpid());
+  #endif
+
+  int ret = 0;
+  ssize_t receive_bytes;
+  size_t response_size = sizeof(*response);
+  if (!response) {
+    warnx("Response parameter invalid.");
+    return ret;
+  }
+  if (sockfd == -1)
+    return ret;
+
+  receive_bytes = recv(sockfd, response, response_size, MSG_WAITALL);
+  if (receive_bytes != response_size) {
+    warn("Read response fault.");
+    return ret;
+  }
+
+  return ret = 1;
 }
 
 void sc_cleanup(void) {
-
-}
-
-inline void *_get_in_addr(struct sockaddr *sa) {
-  /* get socket address */
-  if (sa->sa_family == AF_INET)
-    return &(((struct sockaddr_in*)sa)->sin_addr);
-  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+  close(sockfd);
 }
