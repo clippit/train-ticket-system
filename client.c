@@ -6,9 +6,11 @@
 #include <getopt.h>
 #include <string.h>
 #include "common.h"
+#include "socket.h"
 #include "controller/cclient.h"
 
 request_t payload = {0, -1, "\0", "\0", "\0", "\0", "\0", 0, 1};
+char hostname[HOSTNAME_MAX_LENTH + 1] = "\0";
 
 void display_usage() {
   puts( "Train Ticket System Simulation -- Client" );
@@ -17,8 +19,8 @@ void display_usage() {
   puts( "  ticket [MODE] [-u USERNAME] [-p PASSWORD] [-r|-s|-o|-v|-f] [OPTIONS ...]" );
   puts( "Two Modes:" );
   puts( "-m, --offline           Client and Server are running locally, default mode.");
-  puts( "-M, --online            Client and Server are running separately in network.");
-  puts( "                        Not implemented yet.");
+  puts( "-M, --online HOSTNAME   Client and Server are running separately in network.");
+  puts( "                        You need to specify server hostname.");
   puts( "" );
   puts( "Login Action:" );
   puts( "  -u, --username USERNAME" );
@@ -122,7 +124,7 @@ int main(int argc, char **argv) {
   static const struct option longopts[] = {
     {"help", no_argument, NULL, 'h' },
     {"offline", no_argument, NULL, 'm' },
-    {"online", no_argument, NULL, 'M' },
+    {"online", required_argument, NULL, 'M' },
     {"username", optional_argument, NULL, 'u'},
     {"password", optional_argument, NULL, 'p'},
     {"register", no_argument, NULL, 'r'},
@@ -137,7 +139,7 @@ int main(int argc, char **argv) {
     {"orderid", required_argument, NULL, 'O'},
     {NULL, no_argument, NULL, 0}
   };
-  static const char *shortopts = "hmMu:p:rsovfN:F:T:A:O:";
+  static const char *shortopts = "hmM:u:p:rsovfN:F:T:A:O:";
   int opt = 0;
   long int amount = 1;
 
@@ -151,6 +153,7 @@ int main(int argc, char **argv) {
       break;
     case 'M':
       mode = MODE_ONLINE;
+      read_cli_string_option("Hostname", optarg, hostname, HOSTNAME_MAX_LENTH);
       break;
     case 'u':
       if (optarg) read_cli_string_option("Username", optarg, payload.username, USERNAME_MAX_LENGTH);

@@ -1,0 +1,7 @@
+#ifndef _SOCKET_TICKET_H
+#define _SOCKET_TICKET_H
+
+#define HOSTNAME_MAX_LENTH 255
+#define SERVICE_PORT "12306"
+
+#endif

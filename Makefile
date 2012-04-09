@@ -9,7 +9,7 @@ else
 	CFLAGS += -O2
 endif
 OBJS_SERVER=server.o cserver.o cserver_fifo.o
-OBJS_CLIENT=client.o cclient.o cclient_fifo.o
+OBJS_CLIENT=client.o cclient.o cclient_fifo.o cclient_socket.o
 TARGET_SERVER=ticketd
 TARGET_CLIENT=ticket
 
@@ -40,6 +40,9 @@ cclient.o: $(CONTROLLER_DIR)/cclient.c
 	$(CC) $(CFLAGS) -c $<
 
 cclient_fifo.o: $(CONTROLLER_DIR)/cclient_fifo.c
+	$(CC) $(CFLAGS) -c $<
+
+cclient_socket.o: $(CONTROLLER_DIR)/cclient_socket.c
 	$(CC) $(CFLAGS) -c $<
 
 clean:

@@ -4,11 +4,14 @@
 #include <err.h>
 #include "cclient.h"
 #include "cclient_fifo.h"
+#include "cclient_socket.h"
 
 
 void register_running_mode(int mode) {
   if (mode == MODE_ONLINE) {
-    // TODO Not implemented yet
+    c.init      = sc_init;
+    c.request   = sc_request;
+    c.exit_hook = sc_cleanup;
   } else if (mode == MODE_OFFLINE) {
     c.init      = fc_init;
     c.request   = fc_request;
