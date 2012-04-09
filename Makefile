@@ -2,7 +2,7 @@ CC=gcc
 MODEL_DIR=model
 CONTROLLER_DIR=controller
 CFLAGS=-Wall -I$(MODEL_DIR)
-DEBUG=1
+#DEBUG=1
 ifneq ($(DEBUG),)
 	CFLAGS += -g -DDEBUG
 else
