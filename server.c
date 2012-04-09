@@ -14,7 +14,6 @@ void display_usage() {
   puts( "Two Modes:" );
   puts( "-m, --offline           Client and Server are running locally, default mode.");
   puts( "-M, --online            Client and Server are running separately in network.");
-  puts( "                        Not implemented yet.");
 }
 
 int main(int argc, char **argv) {
